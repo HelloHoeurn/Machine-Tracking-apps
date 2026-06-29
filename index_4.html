@@ -1,0 +1,1886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0C5283">
+<title>Pactics — Rack Tracker (Live)</title>
+<style>
+  :root {
+    --primary:#0C5283; --dark:#08385A; --grey:#5A6B77; --faint:#AEB9C2; --line:#D6E0E8;
+    --bg:#F4F7FA; --card:#FFFFFF; --ok:#1F7A6B; --warn:#C46A1B; --err:#B83232;
+    --rowA:#0C5283; --rowB:#1F7A6B; --rowC:#C46A1B;
+    --rowA-tint:#E7F0F7; --rowB-tint:#E4F1EE; --rowC-tint:#F8EEE2;
+    --radius:10px; --shadow:0 1px 3px rgba(8,56,90,.08), 0 1px 2px rgba(8,56,90,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:#222;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+  button,input,select,textarea{font:inherit;color:inherit}
+  button{cursor:pointer;border:0;background:transparent}
+  a{color:var(--primary);text-decoration:none}
+
+  header{background:var(--dark);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:30;box-shadow:0 2px 4px rgba(0,0,0,.1)}
+  header .title{font-weight:800;font-size:16px;letter-spacing:.3px}
+  header .sub{color:#cfdce4;font-size:11px;margin-top:1px}
+  header .stats{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:12px;color:#cfdce4}
+  header .stats b{color:#fff;font-size:14px}
+  header .user{display:flex;align-items:center;gap:6px;font-size:12px;color:#cfdce4;padding:0 6px}
+  header .user b{color:#fff}
+  header .signout{color:#cfdce4;font-size:11px;text-decoration:underline;cursor:pointer;padding:2px 6px;border-radius:4px}
+  header .signout:hover{background:rgba(255,255,255,.1);color:#fff}
+
+  nav.tabs{background:#fff;border-bottom:1px solid var(--line);display:flex;position:sticky;top:54px;z-index:25}
+  nav.tabs button{flex:1;padding:10px 8px;font-size:13px;font-weight:600;color:var(--grey);border-bottom:3px solid transparent}
+  nav.tabs button.active{color:var(--primary);border-bottom-color:var(--primary);background:#F8FAFC}
+
+  main{padding:14px;max-width:1100px;margin:0 auto}
+  .view{display:none}
+  .view.active{display:block}
+
+  .row-block{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px;margin-bottom:14px}
+  .row-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .row-chip{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;color:#fff;font-weight:800;font-size:15px}
+  .row-A .row-chip{background:var(--rowA)} .row-B .row-chip{background:var(--rowB)} .row-C .row-chip{background:var(--rowC)}
+  .row-head .lbl{font-weight:700;color:var(--dark);font-size:15px}
+  .row-head .count{margin-left:auto;color:var(--grey);font-size:12px}
+  .ports{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+  .port{border:1px solid var(--line);border-radius:8px;padding:6px;background:#FAFCFD}
+  .port-h{font-size:11px;color:var(--grey);font-weight:700;margin-bottom:6px;text-align:center;letter-spacing:.5px}
+  .positions{display:flex;flex-direction:column;gap:5px}
+  .slot{
+    display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:6px;background:#fff;border:1px solid #E2EAF1;
+    cursor:pointer;transition:transform .06s ease, box-shadow .12s ease;min-height:44px;position:relative
+  }
+  .slot:hover{box-shadow:0 0 0 2px rgba(12,82,131,.15)}
+  .slot:active{transform:scale(.98)}
+  .slot.empty{border-style:dashed;border-color:#D6E0E8;background:#F8FAFC}
+  .slot.empty .slot-id{color:var(--faint)}
+  .slot.empty .machine{color:var(--faint);font-style:italic}
+  .row-A .slot.filled{background:var(--rowA-tint);border-color:#BFD5E6}
+  .row-B .slot.filled{background:var(--rowB-tint);border-color:#BBDDD3}
+  .row-C .slot.filled{background:var(--rowC-tint);border-color:#E8CBA8}
+  .slot .slot-id{font-size:10px;color:var(--grey);font-weight:700;letter-spacing:.4px;width:38px;flex:0 0 auto}
+  .slot .machine{font-weight:700;color:var(--dark);font-size:13px;line-height:1.2;flex:1;overflow:hidden;min-width:0}
+  .slot .machine .type{display:block;font-weight:400;color:var(--grey);font-size:10px;margin-top:1px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+  .slot .updated{font-size:9px;color:var(--grey);line-height:1.2;text-align:right;max-width:90px;overflow:hidden}
+  .slot .updated b{display:block;color:var(--dark);font-size:9.5px;font-weight:700;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+  .slot .flash{position:absolute;inset:0;border-radius:6px;background:rgba(255,193,71,.45);animation:flash 1.4s ease-out forwards;pointer-events:none}
+  @keyframes flash{0%{opacity:1}100%{opacity:0}}
+
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
+  .card h2{margin:0 0 4px;color:var(--dark);font-size:16px}
+  .card .hint{color:var(--grey);font-size:12px;margin-bottom:12px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--grey);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+  .field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:15px}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(12,82,131,.12)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 16px;border-radius:8px;font-weight:700;font-size:14px;border:1px solid transparent;min-height:44px}
+  .btn-primary{background:var(--primary);color:#fff}
+  .btn-primary:hover{background:#0a4570}
+  .btn-primary:disabled{background:#7B97AC;cursor:not-allowed}
+  .btn-secondary{background:#fff;color:var(--dark);border-color:var(--line)}
+  .btn-secondary:hover{background:#F4F7FA}
+  .btn-danger{background:#fff;color:var(--err);border-color:#E5C4C4}
+  .btn-danger:hover{background:#FBEFEF}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .scan-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;border:2px dashed var(--primary);border-radius:10px;color:var(--primary);font-weight:700;background:#F4F8FB}
+  .scan-btn:hover{background:#EAF3FA}
+  .scan-btn svg{width:22px;height:22px}
+
+  .preview{display:flex;align-items:center;gap:10px;padding:12px;border-radius:8px;background:#F8FAFC;border:1px solid var(--line)}
+  .preview .code{font-weight:800;color:var(--dark);font-size:18px}
+  .preview .meta{color:var(--grey);font-size:12px}
+  .preview .ok{color:var(--ok);font-weight:700;font-size:12px;margin-left:auto}
+  .preview .err{color:var(--err);font-weight:700;font-size:12px;margin-left:auto}
+
+  .ac-wrap{position:relative}
+  .ac-list{position:absolute;left:0;right:0;top:100%;background:#fff;border:1px solid var(--line);border-top:0;border-radius:0 0 8px 8px;max-height:240px;overflow:auto;z-index:10;box-shadow:0 4px 10px rgba(0,0,0,.08);display:none}
+  .ac-list.open{display:block}
+  .ac-item{padding:8px 12px;cursor:pointer;border-bottom:1px solid #F0F4F7}
+  .ac-item:last-child{border-bottom:0}
+  .ac-item:hover,.ac-item.active{background:#EAF3FA}
+  .ac-item b{color:var(--dark)}
+  .ac-item .meta{color:var(--grey);font-size:11px;margin-top:2px}
+
+  .search-bar{position:sticky;top:108px;background:var(--bg);padding-bottom:8px;z-index:5}
+  .search-bar input{width:100%;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:15px}
+  .filter-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chip{padding:5px 10px;border-radius:14px;background:#fff;border:1px solid var(--line);font-size:12px;color:var(--grey);cursor:pointer}
+  .chip.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+  .result-list{display:grid;gap:6px;margin-top:10px}
+  .result{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+  .result:hover{box-shadow:0 0 0 2px rgba(12,82,131,.15)}
+  .result .code{font-weight:800;color:var(--dark);font-size:14px;min-width:80px}
+  .result .info{flex:1;min-width:0}
+  .result .info .type{color:var(--dark);font-size:13px;font-weight:600}
+  .result .info .meta{color:var(--grey);font-size:11px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+  .result .slot-tag{font-size:11px;font-weight:700;padding:3px 8px;border-radius:12px}
+  .result .slot-tag.assigned{background:#E7F0F7;color:var(--primary)}
+  .result .slot-tag.free{background:#F0F2F4;color:var(--grey)}
+
+  .backdrop{position:fixed;inset:0;background:rgba(8,56,90,.45);display:none;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(2px)}
+  .backdrop.open{display:flex}
+  .sheet{width:100%;max-width:560px;background:#fff;border-radius:14px 14px 0 0;padding:18px;max-height:92vh;overflow:auto;animation:up .18s ease}
+  @keyframes up{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+  @media (min-width:640px){.backdrop{align-items:center}.sheet{border-radius:14px;max-height:88vh}}
+  .sheet-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .sheet-head h3{margin:0;color:var(--dark);font-size:18px}
+  .sheet-head .x{margin-left:auto;font-size:22px;color:var(--grey);padding:2px 10px;border-radius:8px}
+  .sheet-head .x:hover{background:#F0F2F4}
+  .slot-big{display:inline-flex;align-items:center;gap:8px;background:#F4F7FA;border-radius:8px;padding:6px 12px;font-weight:800;color:var(--dark);font-size:18px;letter-spacing:.5px}
+  .slot-big .dot{width:10px;height:10px;border-radius:50%}
+  .slot-big.row-A .dot{background:var(--rowA)} .slot-big.row-B .dot{background:var(--rowB)} .slot-big.row-C .dot{background:var(--rowC)}
+
+  .history{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+  .history h4{margin:0 0 6px;font-size:13px;color:var(--dark)}
+  .history .item{font-size:12px;color:var(--grey);padding:5px 0;border-bottom:1px dashed #EAEFF3}
+  .history .item:last-child{border-bottom:0}
+  .history .item b{color:var(--dark)}
+
+  #scanner-wrap{position:relative;background:#000;border-radius:10px;overflow:hidden;aspect-ratio:4/3}
+  #scanner-video{width:100%;height:100%;object-fit:cover;display:block}
+  .scan-frame{position:absolute;inset:14% 18%;border:3px solid #fff;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.35);pointer-events:none}
+  .scan-msg{position:absolute;bottom:12px;left:12px;right:12px;color:#fff;font-size:12px;text-align:center;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+  .stat{background:#fff;border-radius:8px;padding:12px;border:1px solid var(--line)}
+  .stat .n{font-size:22px;font-weight:800;color:var(--dark)}
+  .stat .l{font-size:11px;color:var(--grey);text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
+
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:var(--dark);color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:100;box-shadow:0 4px 14px rgba(0,0,0,.2);opacity:0;transition:opacity .15s ease,transform .15s ease;pointer-events:none;max-width:90vw;text-align:center}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  .toast.err{background:var(--err)}
+  .toast.ok{background:var(--ok)}
+
+  /* ---------- login screen ---------- */
+  .login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(180deg,#0C5283 0%,#08385A 100%)}
+  .login-card{background:#fff;border-radius:14px;padding:28px;max-width:420px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.2)}
+  .login-card h1{margin:0 0 4px;color:var(--dark);font-size:22px}
+  .login-card .sub{color:var(--grey);font-size:13px;margin-bottom:18px}
+  .login-card label{display:block;font-size:12px;font-weight:600;color:var(--grey);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+  .login-card input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:8px;font-size:15px;margin-bottom:12px}
+  .login-card button{width:100%;padding:12px;background:var(--primary);color:#fff;border-radius:8px;font-weight:700;font-size:15px;border:0}
+  .login-card button:disabled{background:#7B97AC;cursor:not-allowed}
+  .login-card .msg{margin-top:14px;padding:12px;border-radius:8px;font-size:13px;line-height:1.5}
+  .login-card .msg.ok{background:#E4F1EE;color:var(--ok)}
+  .login-card .msg.err{background:#FBEFEF;color:var(--err)}
+  .login-card .footnote{margin-top:18px;font-size:11px;color:var(--grey);text-align:center;line-height:1.5}
+
+  /* ---------- banner ---------- */
+  .banner{padding:10px 14px;background:#FFF6E0;color:#7A5300;font-size:13px;text-align:center;border-bottom:1px solid #EBC77A;display:none}
+  .banner.show{display:block}
+
+  @media (max-width:560px){
+    .ports{grid-template-columns:repeat(5,1fr);gap:5px}
+    .port{padding:4px}
+    .slot{padding:5px 6px;min-height:40px;flex-wrap:wrap}
+    .slot .slot-id{width:30px;font-size:9px}
+    .slot .machine{font-size:11px}
+    .slot .updated{display:none}
+    header .stats{display:none}
+    header .user{font-size:11px;padding:0 4px}
+  }
+  /* ---------- Lines floor view ---------- */
+  .bldg-chip{padding:7px 14px;border-radius:16px;background:#fff;border:1px solid var(--line);font-size:13px;font-weight:600;color:var(--grey);cursor:pointer;white-space:nowrap}
+  .bldg-chip.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+  .line-block{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px;margin-bottom:12px}
+  .line-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .line-head .line-name{display:inline-flex;align-items:center;justify-content:center;min-width:42px;height:30px;padding:0 10px;border-radius:8px;background:var(--primary);color:#fff;font-weight:800;font-size:14px}
+  .line-head .line-title{font-weight:700;color:var(--dark);font-size:14px}
+  .line-head .line-count{margin-left:auto;color:var(--grey);font-size:12px}
+  .line-slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px}
+  /* two facing rows: odd on top, even below, paired in columns */
+  .line-facing{overflow-x:auto;padding-bottom:4px}
+  .facing-row{display:grid;grid-template-columns:repeat(var(--cols), minmax(108px, 1fr));gap:6px}
+  .facing-divider{height:0;border-top:2px dashed #C9D6E0;margin:6px 0}
+  .lslot-spacer{min-height:46px}
+  .lslot{display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:6px;background:#fff;border:1px solid #E2EAF1;cursor:pointer;min-height:46px;transition:transform .06s ease, box-shadow .12s ease;position:relative}
+  .lslot:hover{box-shadow:0 0 0 2px rgba(12,82,131,.15)}
+  .lslot:active{transform:scale(.98)}
+  .lslot.empty{border-style:dashed;border-color:#D6E0E8;background:#F8FAFC}
+  .lslot.empty .lslot-machine{color:var(--faint);font-style:italic}
+  .lslot.filled{background:var(--rowA-tint);border-color:#BFD5E6}
+  .lslot .lslot-pos{font-size:10px;color:var(--grey);font-weight:700;width:22px;flex:0 0 auto;text-align:center}
+  .lslot .lslot-machine{font-weight:700;color:var(--dark);font-size:12px;line-height:1.2;flex:1;overflow:hidden;min-width:0}
+  .lslot .lslot-machine .type{display:block;font-weight:400;color:var(--grey);font-size:9.5px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+  .lslot .flash{position:absolute;inset:0;border-radius:6px;background:rgba(255,193,71,.45);animation:flash 1.4s ease-out forwards;pointer-events:none}
+  .bldg-summary{color:var(--grey);font-size:12px;margin:2px 2px 10px}
+  @media (max-width:560px){
+    .line-slots{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
+    .lslot{min-height:42px;padding:5px 6px}
+    .lslot .lslot-machine{font-size:11px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     LOGIN SCREEN
+     ============================================================ -->
+<div id="login-view" class="login">
+  <div class="login-card">
+    <h1>Pactics Rack Tracker</h1>
+    <div class="sub">Sign in to continue.</div>
+
+    <label for="email">Email address</label>
+    <input id="email" type="email" placeholder="you@pactics.com" autocomplete="username">
+
+    <label for="password" style="margin-top:8px">Password</label>
+    <input id="password" type="password" placeholder="Shared team password" autocomplete="current-password">
+
+    <button id="btn-signin">Sign in</button>
+
+    <div id="login-error" class="msg err" style="display:none"></div>
+
+    <div class="footnote">
+      Pactics Cambodia · Siem Reap · Internal use only
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     APP (hidden until signed in)
+     ============================================================ -->
+<div id="app" style="display:none">
+
+  <header>
+    <div>
+      <div class="title">PACTICS · Rack Tracker</div>
+      <div class="sub" id="header-sub">Sewing Machine Storage Rack</div>
+    </div>
+    <div class="stats">
+      <div><b id="stat-filled">0</b> / 45 slots</div>
+      <div>·</div>
+      <div><b id="stat-pct">0%</b> full</div>
+    </div>
+    <div class="user">
+      <span id="me-email"></span>
+      <span class="signout" id="btn-signout">Sign out</span>
+    </div>
+  </header>
+
+  <div class="banner" id="conn-banner">Reconnecting…</div>
+
+  <nav class="tabs">
+    <button data-tab="rack" class="active">Rack</button>
+    <button data-tab="lines">Lines</button>
+    <button data-tab="assign">Assign</button>
+    <button data-tab="search">Search</button>
+    <button data-tab="inventory">Inventory</button>
+    <button data-tab="data">Data</button>
+  </nav>
+
+  <main>
+    <section class="view active" id="view-rack"></section>
+
+    <section class="view" id="view-lines">
+      <div class="search-bar">
+        <div id="building-tabs" class="filter-chips" style="margin-bottom:8px"></div>
+        <input id="line-search-input" placeholder="Jump to a machine on the lines (code, FA, serial)…">
+      </div>
+      <div id="lines-container"></div>
+    </section>
+
+    <section class="view" id="view-assign">
+      <div class="card">
+        <h2>Assign machine to slot</h2>
+        <div class="hint">Scan the rack-position QR or pick the slot, then enter the machine — by code, fixed asset (FM-…), or serial number.</div>
+
+        <button id="scan-slot" class="scan-btn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M7 12h10M9 9h6M9 15h6"/></svg>
+          Scan position QR
+        </button>
+
+        <div class="field" style="margin-top:14px">
+          <label for="slot-select">Rack position (slot)</label>
+          <select id="slot-select"><option value="">— choose a slot —</option></select>
+        </div>
+
+        <div id="slot-preview" style="display:none"></div>
+
+        <div class="field ac-wrap" id="mc-wrap">
+          <label for="machine-input">Machine code, fixed asset, or serial</label>
+          <input id="machine-input" autocomplete="off" placeholder="e.g. LS-34   ·   FM-24-05-004   ·   23093550448">
+          <div class="ac-list" id="ac-list"></div>
+        </div>
+
+        <div id="machine-preview" style="display:none"></div>
+
+        <div class="field">
+          <label for="notes-input">Notes (optional)</label>
+          <input id="notes-input" placeholder="e.g. condition check passed, moved from line 4">
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" id="btn-save">Save assignment</button>
+          <button class="btn btn-secondary" id="btn-clear-form">Clear</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Recent activity</h2>
+        <div class="hint">Last 15 changes — yours and your admin's.</div>
+        <div id="recent-list"></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-search">
+      <div class="search-bar">
+        <input id="search-input" placeholder="Search by code, type, brand, model, serial, FA…">
+        <div class="filter-chips" id="filter-chips">
+          <button class="chip active" data-f="all">All</button>
+          <button class="chip" data-f="assigned">On rack</button>
+          <button class="chip" data-f="free">Not on rack</button>
+          <button class="chip" data-f="stock">Stock</button>
+          <button class="chip" data-f="rental">Rental</button>
+        </div>
+      </div>
+      <div class="result-list" id="result-list"></div>
+    </section>
+
+    <section class="view" id="view-inventory">
+      <div class="search-bar">
+        <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+          <input id="inv-search-input" placeholder="Search inventory by code, FA, serial, brand, model…" style="flex:1">
+          <button class="btn btn-primary" id="btn-add-machine" style="white-space:nowrap; padding:11px 14px;">+ Add machine</button>
+        </div>
+        <div class="filter-chips" id="inv-filter-chips">
+          <button class="chip active" data-f="active">Active</button>
+          <button class="chip" data-f="stock">Stock</button>
+          <button class="chip" data-f="rental">Rental</button>
+          <button class="chip" data-f="retired">Retired</button>
+        </div>
+      </div>
+      <div id="inv-count" class="hint" style="margin:4px 4px 8px;color:var(--grey);font-size:12px"></div>
+      <div class="result-list" id="inv-list"></div>
+    </section>
+
+    <section class="view" id="view-data">
+      <div class="card" style="margin-bottom:14px">
+        <h2 style="margin-bottom:10px">Overview — whole operation</h2>
+        <div class="stat-grid" style="margin-bottom:0">
+          <div class="stat"><div class="n" id="d-deployed">0</div><div class="l">Machines deployed</div></div>
+          <div class="stat"><div class="n" id="d-on-rack">0</div><div class="l">On the rack</div></div>
+          <div class="stat"><div class="n" id="d-on-lines">0</div><div class="l">On the lines</div></div>
+          <div class="stat"><div class="n" id="d-unassigned">0</div><div class="l">Not assigned</div></div>
+          <div class="stat"><div class="n" id="d-active">0</div><div class="l">Active machines</div></div>
+          <div class="stat"><div class="n" id="d-retired">0</div><div class="l">Retired</div></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <h2 style="margin-bottom:10px">Storage rack</h2>
+        <div class="stat-grid" style="margin-bottom:0">
+          <div class="stat"><div class="n" id="d-total">0</div><div class="l">Slots used</div></div>
+          <div class="stat"><div class="n" id="d-free">45</div><div class="l">Slots free</div></div>
+          <div class="stat"><div class="n" id="d-rowA">0</div><div class="l">Row A used</div></div>
+          <div class="stat"><div class="n" id="d-rowB">0</div><div class="l">Row B used</div></div>
+          <div class="stat"><div class="n" id="d-rowC">0</div><div class="l">Row C used</div></div>
+          <div class="stat"><div class="n" id="d-types">0</div><div class="l">Machine types</div></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <h2 style="margin-bottom:10px">Sewing lines</h2>
+        <div class="stat-grid" style="margin-bottom:10px">
+          <div class="stat"><div class="n" id="d-line-used">0</div><div class="l">Positions filled</div></div>
+          <div class="stat"><div class="n" id="d-line-total">0</div><div class="l">Total positions</div></div>
+          <div class="stat"><div class="n" id="d-line-count">0</div><div class="l">Lines</div></div>
+          <div class="stat"><div class="n" id="d-bldg-count">0</div><div class="l">Buildings</div></div>
+        </div>
+        <div id="d-bldg-breakdown" style="font-size:13px;color:var(--grey)"></div>
+      </div>
+
+      <div class="card">
+        <h2>Export</h2>
+        <div class="hint">Download the current state as a CSV file (opens in Excel).</div>
+        <div class="actions">
+          <button class="btn btn-primary" id="exp-csv">Export rack CSV</button>
+          <button class="btn btn-secondary" id="exp-lines-csv">Export lines CSV</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>About this app</h2>
+        <div class="hint" style="margin-bottom:0">
+          Shared tracker for Pactics machines across the storage rack and the sewing lines.
+          A machine can be on the rack OR on a line — never both. Every change is visible to the other user in real time.
+          <br><br>
+          Signed in as <b id="d-me"></b>.
+          Inventory: <span id="about-inv-count">…</span>.
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="backdrop" id="slot-sheet">
+    <div class="sheet" role="dialog" aria-modal="true">
+      <div class="sheet-head">
+        <div class="slot-big" id="ss-slot-id"><span class="dot"></span><span></span></div>
+        <button class="x" id="ss-close">×</button>
+      </div>
+      <div id="ss-body"></div>
+    </div>
+  </div>
+
+  <div class="backdrop" id="scan-sheet">
+    <div class="sheet" role="dialog" aria-modal="true">
+      <div class="sheet-head">
+        <h3>Scan QR code</h3>
+        <button class="x" id="scan-close">×</button>
+      </div>
+      <div id="scanner-wrap">
+        <video id="scanner-video" playsinline muted></video>
+        <div class="scan-frame"></div>
+        <div class="scan-msg" id="scan-msg">Point camera at the QR label…</div>
+      </div>
+      <div class="actions" style="margin-top:12px">
+        <button class="btn btn-secondary" id="scan-stop">Cancel</button>
+      </div>
+      <div class="hint" style="margin-top:10px">
+        If the scanner doesn't start, your browser may not support camera scanning — you can still pick the slot from the list above.
+      </div>
+    </div>
+  </div>
+
+  <div class="backdrop" id="machine-sheet">
+    <div class="sheet" role="dialog" aria-modal="true">
+      <div class="sheet-head">
+        <h3 id="ms-title">Edit machine</h3>
+        <button class="x" id="ms-close">×</button>
+      </div>
+      <div id="ms-body"></div>
+    </div>
+  </div>
+
+  <div class="backdrop" id="lineslot-sheet">
+    <div class="sheet" role="dialog" aria-modal="true">
+      <div class="sheet-head">
+        <div class="slot-big" id="ls-slot-id"><span class="dot"></span><span></span></div>
+        <button class="x" id="ls-close">×</button>
+      </div>
+      <div id="ls-body"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Supabase JS client (v2) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+// ============================================================
+//  CONFIG — paste your Supabase project details here
+//  Both values come from Supabase → Project Settings → API
+// ============================================================
+const SUPABASE_URL = "https://tnkgzbbrldvysbzsonbs.supabase.co";    // e.g. "https://abcdefg.supabase.co"
+const SUPABASE_KEY = "sb_publishable_56oEl3kH5DX1y74Dl8Ca1w_MipK_YhG"; // long string starting "eyJ…"
+// ============================================================
+
+function configError(msg){
+  document.body.innerHTML = `
+    <div style="max-width:560px;margin:60px auto;padding:30px;background:#fff;border-radius:12px;font-family:Arial;box-shadow:0 4px 20px rgba(0,0,0,.1)">
+      <h2 style="color:#08385A;margin:0 0 12px">Setup not complete</h2>
+      <p>${msg || 'Open this HTML file in a text editor and replace the two placeholders near the top of the &lt;script&gt; block:'}</p>
+      <pre style="background:#F4F7FA;padding:12px;border-radius:6px;font-size:13px;overflow:auto">SUPABASE_URL = "..."
+SUPABASE_KEY = "..."</pre>
+      <p style="color:#5A6B77;font-size:13px;line-height:1.5">Get both values from your Supabase dashboard:<br>
+      <b>Project Settings → API</b>. The setup guide walks through this step-by-step.</p>
+    </div>`;
+  throw new Error('halt-init');
+}
+
+if (SUPABASE_URL.includes("PASTE_YOUR") || SUPABASE_KEY.includes("PASTE_YOUR")) {
+  configError();
+}
+if (!window.supabase || !window.supabase.createClient) {
+  configError("The Supabase library failed to load. Check that this device has internet access (the library is fetched from a CDN on first load) and refresh the page.");
+}
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+});
+
+// ---------- helpers ----------
+function $(id){ return document.getElementById(id); }
+function escapeHtml(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+function normLookup(s){ return (s||'').toString().toUpperCase().replace(/\s+/g,''); }
+function fmtTime(iso){
+  if (!iso) return '';
+  const d = new Date(iso); const now = new Date();
+  const diff = (now - d) / 1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  if (diff < 86400*7) return Math.floor(diff/86400) + 'd ago';
+  return d.toLocaleDateString(undefined, { day:'2-digit', month:'short', year:'2-digit' });
+}
+function fmtTimeFull(iso){
+  if (!iso) return '';
+  return new Date(iso).toLocaleString(undefined, { year:'2-digit', month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+function shortName(email){
+  if (!email) return '—';
+  return email.split('@')[0];
+}
+
+let toastTimer;
+function toast(msg, type){
+  const t = $('toast'); t.textContent = msg; t.className = 'toast show ' + (type||'');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = 'toast', 2600);
+}
+
+// ============================================================
+//  STATE
+// ============================================================
+let SESSION = null;           // current auth session
+let INVENTORY = [];           // ALL machines (active + retired) — used by inventory tab
+let INV_ACTIVE = [];          // only active (retired_at is null) — used by search/assign
+let INV_BY_CODE = {};         // all machines by code (so history still resolves retired ones)
+let INV_INDEX = {};           // code/fa/serial → machine, ACTIVE ONLY (retired excluded)
+let SLOTS_LIST = [];          // ['A-1-1', ...] in order
+let ASSIGNMENTS = {};         // slot_id → { machine_code, notes, updated_at, updated_by_email }
+let HISTORY = [];             // recent 50 entries
+
+// --- Sewing line state ---
+let BUILDINGS = [];           // [{code,name,sort_order}]
+let LINES = [];               // [{line_id,building_code,label,sort_order}]
+let LINE_SLOTS = [];          // [{slot_id,line_id,position}]
+let LINE_ASSIGNMENTS = {};    // slot_id → {machine_code, notes, updated_at, updated_by_email}
+let activeBuilding = null;    // currently selected building code
+
+function findMachine(input){
+  if (!input) return null;
+  return INV_INDEX[normLookup(input)] || null;
+}
+function isRetired(m){ return m && m.retired_at != null; }
+
+// ============================================================
+//  AUTH
+// ============================================================
+async function init(){
+  const { data: { session } } = await sb.auth.getSession();
+  SESSION = session;
+  if (session) {
+    showApp();
+    await loadAll();
+    subscribeRealtime();
+  } else {
+    showLogin();
+  }
+  sb.auth.onAuthStateChange(async (event, sess) => {
+    SESSION = sess;
+    if (event === 'SIGNED_IN') {
+      showApp();
+      await loadAll();
+      subscribeRealtime();
+    } else if (event === 'SIGNED_OUT') {
+      showLogin();
+    }
+  });
+}
+
+function showLogin(){
+  $('login-view').style.display = 'flex';
+  $('app').style.display = 'none';
+}
+function showApp(){
+  $('login-view').style.display = 'none';
+  $('app').style.display = 'block';
+  $('me-email').textContent = shortName(SESSION.user.email);
+  $('d-me').textContent = SESSION.user.email;
+}
+
+$('btn-signin').addEventListener('click', async () => {
+  const email = $('email').value.trim();
+  const password = $('password').value;
+  if (!email || !email.includes('@')) { showLoginErr('Please enter a valid email.'); return; }
+  if (!password) { showLoginErr('Please enter the password.'); return; }
+  $('btn-signin').disabled = true;
+  $('btn-signin').textContent = 'Signing in…';
+  $('login-error').style.display = 'none';
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  $('btn-signin').disabled = false;
+  $('btn-signin').textContent = 'Sign in';
+  if (error) {
+    showLoginErr(error.message || 'Could not sign in. Check email and password.');
+    return;
+  }
+  $('password').value = '';
+});
+function showLoginErr(msg){
+  const e = $('login-error');
+  e.textContent = msg; e.style.display = 'block';
+}
+$('email').addEventListener('keydown', e => { if (e.key === 'Enter') $('password').focus(); });
+$('password').addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-signin').click(); });
+
+$('btn-signout').addEventListener('click', async () => {
+  if (!confirm('Sign out?')) return;
+  await sb.auth.signOut();
+});
+
+// ============================================================
+//  LOAD INITIAL DATA
+// ============================================================
+async function loadAll(){
+  try {
+    const [m, s, a, h, b, l, ls, la] = await Promise.all([
+      sb.from('machines').select('*').order('code'),
+      sb.from('slots').select('*').order('slot_id'),
+      sb.from('assignments').select('*'),
+      sb.from('history').select('*').order('ts', { ascending: false }).limit(50),
+      sb.from('buildings').select('*').order('sort_order'),
+      sb.from('lines').select('*').order('sort_order'),
+      sb.from('line_slots').select('*').order('position'),
+      sb.from('line_assignments').select('*'),
+    ]);
+    if (m.error) throw m.error;
+    if (s.error) throw s.error;
+    if (a.error) throw a.error;
+    if (h.error) throw h.error;
+    // line tables may not exist yet on older databases — tolerate errors
+    BUILDINGS = (b && !b.error && b.data) ? b.data : [];
+    LINES = (l && !l.error && l.data) ? l.data : [];
+    LINE_SLOTS = (ls && !ls.error && ls.data) ? ls.data : [];
+    LINE_ASSIGNMENTS = {};
+    if (la && !la.error && la.data) for (const x of la.data) LINE_ASSIGNMENTS[x.slot_id] = x;
+
+    INVENTORY = m.data || [];
+    INV_BY_CODE = {};
+    INV_INDEX = {};
+    INV_ACTIVE = [];
+    for (const x of INVENTORY) {
+      INV_BY_CODE[x.code] = x;  // includes retired, so history still resolves
+      if (!isRetired(x)) {
+        INV_ACTIVE.push(x);
+        for (const k of [x.code, x.fixed_asset, x.serial]) {
+          const n = normLookup(k);
+          if (n && !INV_INDEX[n]) INV_INDEX[n] = x;
+        }
+      }
+    }
+    SLOTS_LIST = (s.data || []).map(x => x.slot_id);
+    ASSIGNMENTS = {};
+    for (const x of (a.data || [])) ASSIGNMENTS[x.slot_id] = x;
+    HISTORY = h.data || [];
+
+    if (!activeBuilding && BUILDINGS.length) activeBuilding = BUILDINGS[0].code;
+
+    renderRack(); renderAssign(); updateHeaderStats();
+    const activeTab = document.querySelector('nav.tabs button.active')?.dataset.tab;
+    if (activeTab === 'inventory') renderInventory();
+    if (activeTab === 'lines') renderLines();
+  } catch (err) {
+    console.error(err);
+    toast('Could not load data — ' + (err.message || 'check connection'), 'err');
+  }
+}
+
+// ============================================================
+//  REALTIME — listen for changes from the other user
+// ============================================================
+let lastFlash = {};
+function subscribeRealtime(){
+  sb.channel('rack-live')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'assignments' }, payload => {
+      const row = payload.new || payload.old;
+      if (!row) return;
+      const slotId = row.slot_id;
+      if (payload.eventType === 'DELETE') delete ASSIGNMENTS[slotId];
+      else ASSIGNMENTS[slotId] = payload.new;
+      renderRack();
+      updateHeaderStats();
+      // flash the changed slot if it wasn't me
+      if (payload.new && payload.new.updated_by !== (SESSION && SESSION.user.id)) {
+        lastFlash[slotId] = Date.now();
+        flashSlot(slotId);
+        toast(`${shortName(payload.new.updated_by_email)} updated ${slotId}`, 'ok');
+      }
+    })
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'history' }, payload => {
+      HISTORY.unshift(payload.new);
+      HISTORY = HISTORY.slice(0, 50);
+      renderRecent();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'machines' }, payload => {
+      // Reload inventory when machines change (insert/update/retire)
+      loadAll();
+      if (payload.new && payload.new.updated_by !== (SESSION && SESSION.user.id)) {
+        const who = shortName(payload.new.updated_by_email);
+        const what = payload.eventType === 'INSERT' ? 'added' : (payload.new.retired_at ? 'retired' : 'updated');
+        toast(`${who} ${what} ${payload.new.code}`, 'ok');
+      }
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'line_assignments' }, payload => {
+      const row = payload.new || payload.old;
+      if (!row) return;
+      const slotId = row.slot_id;
+      if (payload.eventType === 'DELETE') delete LINE_ASSIGNMENTS[slotId];
+      else LINE_ASSIGNMENTS[slotId] = payload.new;
+      renderLines();
+      if (payload.new && payload.new.updated_by !== (SESSION && SESSION.user.id)) {
+        flashLineSlot(slotId);
+        toast(`${shortName(payload.new.updated_by_email)} updated ${slotId}`, 'ok');
+      }
+    })
+    .subscribe();
+}
+function flashLineSlot(slotId){
+  setTimeout(() => {
+    const el = document.querySelector(`.lslot[data-slot="${slotId}"]`);
+    if (!el) return;
+    const f = document.createElement('span');
+    f.className = 'flash';
+    el.appendChild(f);
+    setTimeout(() => f.remove(), 1500);
+  }, 50);
+}
+function flashSlot(slotId){
+  setTimeout(() => {
+    const el = document.querySelector(`.slot[data-slot="${slotId}"]`);
+    if (!el) return;
+    const f = document.createElement('span');
+    f.className = 'flash';
+    el.appendChild(f);
+    setTimeout(() => f.remove(), 1500);
+  }, 50);
+}
+
+// ============================================================
+//  WRITES
+// ============================================================
+async function saveAssignment(slot, code, notes){
+  const m = findMachine(code);
+  if (!m) return { ok:false, error:'Machine not found in inventory: ' + code };
+  const canonical = m.code;
+
+  // If this machine is already in another slot, free it (database-side).
+  const prevSlot = Object.entries(ASSIGNMENTS).find(([s,a]) => a.machine_code === canonical && s !== slot);
+  if (prevSlot) {
+    const { error } = await sb.from('assignments').delete().eq('slot_id', prevSlot[0]);
+    if (error) return { ok:false, error: error.message };
+    await sb.from('history').insert({
+      slot_id: prevSlot[0], machine_code: canonical, action: 'moved-from',
+      user_id: SESSION.user.id, user_email: SESSION.user.email
+    });
+  }
+
+  const wasOccupied = !!ASSIGNMENTS[slot];
+  const oldCode = wasOccupied ? ASSIGNMENTS[slot].machine_code : null;
+
+  const { error } = await sb.from('assignments').upsert({
+    slot_id: slot,
+    machine_code: canonical,
+    notes: notes || null,
+    updated_at: new Date().toISOString(),
+    updated_by: SESSION.user.id,
+    updated_by_email: SESSION.user.email
+  }, { onConflict: 'slot_id' });
+  if (error) return { ok:false, error: error.message };
+
+  if (wasOccupied && oldCode !== canonical) {
+    await sb.from('history').insert({
+      slot_id: slot, machine_code: oldCode, action: 'replaced',
+      notes: 'replaced by ' + canonical,
+      user_id: SESSION.user.id, user_email: SESSION.user.email
+    });
+  }
+  await sb.from('history').insert({
+    slot_id: slot, machine_code: canonical,
+    action: wasOccupied ? 'replaced-with' : 'assigned',
+    notes, user_id: SESSION.user.id, user_email: SESSION.user.email
+  });
+
+  return { ok:true, code: canonical };
+}
+
+async function removeAssignment(slot){
+  const a = ASSIGNMENTS[slot]; if (!a) return;
+  const { error } = await sb.from('assignments').delete().eq('slot_id', slot);
+  if (error) { toast('Could not remove: ' + error.message, 'err'); return; }
+  await sb.from('history').insert({
+    slot_id: slot, machine_code: a.machine_code, action: 'removed',
+    user_id: SESSION.user.id, user_email: SESSION.user.email
+  });
+}
+
+// ============================================================
+//  TABS
+// ============================================================
+document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+function showTab(name){
+  document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + name));
+  if (name === 'rack') renderRack();
+  if (name === 'lines') renderLines();
+  if (name === 'assign') renderAssign();
+  if (name === 'search') renderSearch();
+  if (name === 'inventory') renderInventory();
+  if (name === 'data') renderData();
+  window.scrollTo(0, 0);
+}
+
+// ============================================================
+//  RACK VIEW
+// ============================================================
+function renderRack(){
+  const root = $('view-rack'); let html = '';
+  for (const r of ['A','B','C']) {
+    let used = 0;
+    for (let p=1; p<=5; p++) for (let s=1; s<=3; s++) if (ASSIGNMENTS[`${r}-${p}-${s}`]) used++;
+    html += `<div class="row-block row-${r}">
+      <div class="row-head"><div class="row-chip">${r}</div><div class="lbl">Row ${r}</div><div class="count">${used} / 15 slots</div></div>
+      <div class="ports">`;
+    for (let p=1; p<=5; p++) {
+      html += `<div class="port"><div class="port-h">PORT ${p}</div><div class="positions">`;
+      for (let s=1; s<=3; s++) {
+        const id = `${r}-${p}-${s}`;
+        const a = ASSIGNMENTS[id];
+        if (a) {
+          const inv = INV_BY_CODE[a.machine_code] || { type:'?' };
+          html += `<div class="slot filled" data-slot="${id}">
+            <span class="slot-id">${id}</span>
+            <span class="machine">${escapeHtml(a.machine_code)}<span class="type">${escapeHtml(inv.type||'')}</span></span>
+            <span class="updated"><b>${escapeHtml(shortName(a.updated_by_email))}</b>${escapeHtml(fmtTime(a.updated_at))}</span>
+          </div>`;
+        } else {
+          html += `<div class="slot empty" data-slot="${id}">
+            <span class="slot-id">${id}</span><span class="machine">empty</span>
+          </div>`;
+        }
+      }
+      html += `</div></div>`;
+    }
+    html += `</div></div>`;
+  }
+  root.innerHTML = html;
+  root.querySelectorAll('.slot').forEach(el => el.addEventListener('click', () => openSlotSheet(el.dataset.slot)));
+}
+function updateHeaderStats(){
+  const n = Object.keys(ASSIGNMENTS).length;
+  $('stat-filled').textContent = n;
+  $('stat-pct').textContent = Math.round(n*100/45) + '%';
+}
+
+// ============================================================
+//  SLOT SHEET
+// ============================================================
+function openSlotSheet(slot){
+  const a = ASSIGNMENTS[slot];
+  const row = slot[0];
+  const sh = $('slot-sheet');
+  const head = $('ss-slot-id');
+  head.className = 'slot-big row-' + row;
+  head.querySelector('span:last-child').textContent = slot;
+  const body = $('ss-body');
+  let html;
+  if (a) {
+    const inv = INV_BY_CODE[a.machine_code] || {};
+    html = `
+      <div class="preview" style="margin-bottom:10px">
+        <div>
+          <div class="code">${escapeHtml(a.machine_code)}</div>
+          <div class="meta">${escapeHtml(inv.type||'')}${inv.brand?' · '+escapeHtml(inv.brand):''}${inv.model?' · '+escapeHtml(inv.model):''}</div>
+        </div>
+        <div class="ok">ASSIGNED</div>
+      </div>
+      <div class="field"><label>Condition</label><div>${escapeHtml(inv.condition||'—')}</div></div>
+      <div class="field"><label>Fixed asset / Serial</label><div>${escapeHtml(inv.fixed_asset||'—')} <span style="color:var(--grey)">·</span> ${escapeHtml(inv.serial||'—')}</div></div>
+      ${a.notes ? `<div class="field"><label>Notes</label><div>${escapeHtml(a.notes)}</div></div>` : ''}
+      <div class="field"><label>Last updated</label>
+        <div>${fmtTimeFull(a.updated_at)} by <b>${escapeHtml(a.updated_by_email||'—')}</b></div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" id="ss-reassign">Reassign / replace</button>
+        <button class="btn btn-danger" id="ss-remove">Remove from rack</button>
+      </div>`;
+  } else {
+    html = `
+      <div class="preview" style="margin-bottom:10px">
+        <div><div class="code">Empty</div><div class="meta">No machine assigned to this slot</div></div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" id="ss-assign">Assign a machine</button>
+      </div>`;
+  }
+  // history for this slot
+  const hist = HISTORY.filter(h => h.slot_id === slot).slice(0, 8);
+  if (hist.length) {
+    html += `<div class="history"><h4>History</h4>`;
+    for (const h of hist) {
+      html += `<div class="item">
+        <b>${escapeHtml(h.action)}</b> · ${escapeHtml(h.machine_code||'')}
+        <span style="float:right">${fmtTimeFull(h.ts)} · ${escapeHtml(shortName(h.user_email))}</span>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+  body.innerHTML = html;
+  sh.classList.add('open');
+  $('ss-close').onclick = () => sh.classList.remove('open');
+  sh.onclick = (e) => { if (e.target === sh) sh.classList.remove('open'); };
+  const reAssign = $('ss-reassign'), doAssign = $('ss-assign'), doRemove = $('ss-remove');
+  if (reAssign) reAssign.onclick = () => { sh.classList.remove('open'); openAssignFor(slot); };
+  if (doAssign) doAssign.onclick = () => { sh.classList.remove('open'); openAssignFor(slot); };
+  if (doRemove) doRemove.onclick = async () => {
+    if (!confirm(`Remove ${a.machine_code} from ${slot}?`)) return;
+    await removeAssignment(slot);
+    delete ASSIGNMENTS[slot];
+    sh.classList.remove('open');
+    renderRack(); renderAssign(); updateHeaderStats(); renderData();
+    toast(`${a.machine_code} removed from ${slot}`, 'ok');
+  };
+}
+
+// ============================================================
+//  ASSIGN VIEW
+// ============================================================
+function renderAssign(){
+  const sel = $('slot-select');
+  // rebuild options each time so labels stay accurate
+  sel.innerHTML = '<option value="">— choose a slot —</option>';
+  for (const id of SLOTS_LIST) {
+    const a = ASSIGNMENTS[id];
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = id + (a ? ` — ${a.machine_code}` : ' — (empty)');
+    sel.appendChild(opt);
+  }
+  renderRecent();
+}
+function openAssignFor(slot){
+  showTab('assign');
+  setTimeout(() => {
+    $('slot-select').value = slot;
+    updateSlotPreview();
+    $('machine-input').focus();
+  }, 50);
+}
+function updateSlotPreview(){
+  const slot = $('slot-select').value;
+  const box = $('slot-preview');
+  if (!slot) { box.style.display='none'; return; }
+  const a = ASSIGNMENTS[slot];
+  const row = slot[0];
+  let html = `<div class="preview" style="margin-bottom:12px">
+    <div><div class="code" style="color:var(--row${row});">${slot}</div>
+    <div class="meta">Row ${row} · Port ${slot[2]} · Position ${slot[4]}</div></div>`;
+  if (a) html += `<div class="err">Currently holds ${escapeHtml(a.machine_code)} — saving will replace it.</div>`;
+  else html += `<div class="ok">EMPTY</div>`;
+  html += `</div>`;
+  box.innerHTML = html;
+  box.style.display = 'block';
+}
+function updateMachinePreview(){
+  const input = $('machine-input').value.trim();
+  const box = $('machine-preview');
+  if (!input) { box.style.display='none'; return; }
+  const m = findMachine(input);
+  let html = `<div class="preview" style="margin-bottom:12px">`;
+  if (m) {
+    const norm = normLookup(input);
+    let via = 'code';
+    if (normLookup(m.fixed_asset) === norm && normLookup(m.code) !== norm) via = 'fixed asset';
+    else if (normLookup(m.serial) === norm && normLookup(m.code) !== norm) via = 'serial';
+    let existSlot = null;
+    for (const [s, a] of Object.entries(ASSIGNMENTS)) if (a.machine_code === m.code) existSlot = s;
+    html += `<div><div class="code">${escapeHtml(m.code)}</div>
+      <div class="meta">${escapeHtml(m.type||'')}${m.brand?' · '+escapeHtml(m.brand):''}${m.model?' · '+escapeHtml(m.model):''}
+      ${m.fixed_asset?'<br>FA: '+escapeHtml(m.fixed_asset):''}${m.serial?' · S/N: '+escapeHtml(m.serial):''}</div></div>`;
+    if (via !== 'code') html += `<div class="ok" style="font-size:11px">matched on ${via} → ${escapeHtml(m.code)}</div>`;
+    else if (existSlot) html += `<div class="err">Currently in ${existSlot} — will be moved.</div>`;
+    else html += `<div class="ok">${(m.source||'').toUpperCase()}</div>`;
+    if (via !== 'code' && existSlot) html += `<div class="err" style="margin-top:4px">Currently in ${existSlot} — will be moved.</div>`;
+  } else {
+    html += `<div><div class="code" style="color:var(--err)">${escapeHtml(input)}</div>
+      <div class="meta">Not found by code, FA number, or serial.</div></div>
+      <div class="err">UNKNOWN</div>`;
+  }
+  html += `</div>`;
+  box.innerHTML = html; box.style.display = 'block';
+}
+let acIdx = -1;
+const acList = $('ac-list');
+const mcInput = $('machine-input');
+mcInput.addEventListener('input', () => {
+  const q = mcInput.value.trim().toLowerCase();
+  updateMachinePreview();
+  if (!q) { acList.classList.remove('open'); return; }
+  const hits = INV_ACTIVE.filter(m =>
+    (m.code||'').toLowerCase().includes(q)
+    || (m.fixed_asset||'').toLowerCase().includes(q)
+    || (m.serial||'').toLowerCase().includes(q)
+  ).slice(0, 8);
+  if (!hits.length) { acList.classList.remove('open'); return; }
+  acList.innerHTML = hits.map(m => `<div class="ac-item" data-code="${escapeHtml(m.code)}">
+    <b>${escapeHtml(m.code)}</b> <span style="color:var(--grey)">${escapeHtml(m.type||'')}</span>
+    <div class="meta">${escapeHtml(m.brand||'')} ${escapeHtml(m.model||'')}${m.fixed_asset?' · FA '+escapeHtml(m.fixed_asset):''}${m.serial?' · S/N '+escapeHtml(m.serial):''}</div>
+  </div>`).join('');
+  acList.classList.add('open'); acIdx = -1;
+  acList.querySelectorAll('.ac-item').forEach(it => it.onclick = () => {
+    mcInput.value = it.dataset.code; acList.classList.remove('open'); updateMachinePreview();
+  });
+});
+mcInput.addEventListener('keydown', e => {
+  if (!acList.classList.contains('open')) return;
+  const items = acList.querySelectorAll('.ac-item');
+  if (e.key === 'ArrowDown') { e.preventDefault(); acIdx = Math.min(acIdx+1, items.length-1); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); acIdx = Math.max(acIdx-1, 0); }
+  else if (e.key === 'Enter' && acIdx >= 0) {
+    e.preventDefault(); mcInput.value = items[acIdx].dataset.code; acList.classList.remove('open'); updateMachinePreview(); return;
+  } else if (e.key === 'Escape') { acList.classList.remove('open'); return; }
+  items.forEach((it,i) => it.classList.toggle('active', i===acIdx));
+});
+mcInput.addEventListener('blur', () => setTimeout(() => acList.classList.remove('open'), 150));
+$('slot-select').addEventListener('change', updateSlotPreview);
+
+$('btn-save').addEventListener('click', async () => {
+  const slot = $('slot-select').value;
+  const raw = $('machine-input').value.trim();
+  const notes = $('notes-input').value.trim();
+  if (!slot) { toast('Choose a slot first.', 'err'); return; }
+  if (!raw) { toast('Enter a machine code, FA, or serial.', 'err'); return; }
+  const m = findMachine(raw);
+  if (!m) {
+    toast('Not found in inventory — please check the code and try again.', 'err');
+    $('machine-input').focus(); $('machine-input').select();
+    return;
+  }
+  $('btn-save').disabled = true;
+  $('btn-save').textContent = 'Saving…';
+  const res = await saveAssignment(slot, m.code, notes);
+  $('btn-save').disabled = false;
+  $('btn-save').textContent = 'Save assignment';
+  if (!res.ok) { toast(res.error, 'err'); return; }
+  // update local state immediately (realtime will reconcile any other concurrent changes)
+  ASSIGNMENTS[slot] = {
+    slot_id: slot, machine_code: res.code, notes: notes||null,
+    updated_at: new Date().toISOString(),
+    updated_by: SESSION.user.id, updated_by_email: SESSION.user.email
+  };
+  // remove from any previous slot (saveAssignment did this server-side too)
+  for (const [s,a] of Object.entries(ASSIGNMENTS)) {
+    if (s !== slot && a.machine_code === res.code) delete ASSIGNMENTS[s];
+  }
+  // the DB trigger removes this machine from any sewing line — reflect that locally
+  for (const [s,a] of Object.entries(LINE_ASSIGNMENTS)) {
+    if (a.machine_code === res.code) delete LINE_ASSIGNMENTS[s];
+  }
+  renderRack(); renderAssign(); updateHeaderStats(); renderData();
+  toast(`${res.code} → ${slot}`, 'ok');
+  $('machine-input').value = '';
+  $('notes-input').value = '';
+  $('machine-preview').style.display='none';
+});
+$('btn-clear-form').addEventListener('click', () => {
+  $('slot-select').value = ''; $('machine-input').value = ''; $('notes-input').value = '';
+  $('slot-preview').style.display='none'; $('machine-preview').style.display='none';
+});
+
+function renderRecent(){
+  const box = $('recent-list');
+  const items = HISTORY.slice(0, 15);
+  if (!items.length) { box.innerHTML = '<div class="hint" style="margin:0">No activity yet.</div>'; return; }
+  box.innerHTML = items.map(h => `
+    <div class="result">
+      <div class="code">${escapeHtml(h.slot_id)}</div>
+      <div class="info"><div class="type">${escapeHtml(h.action)} · ${escapeHtml(h.machine_code||'')}</div>
+      <div class="meta">${fmtTimeFull(h.ts)} · ${escapeHtml(shortName(h.user_email))}${h.notes?' · '+escapeHtml(h.notes):''}</div></div>
+    </div>`).join('');
+}
+
+// ============================================================
+//  SEARCH
+// ============================================================
+let searchFilter = 'all';
+$('filter-chips').addEventListener('click', e => {
+  if (!e.target.classList.contains('chip')) return;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  e.target.classList.add('active');
+  searchFilter = e.target.dataset.f;
+  renderSearch();
+});
+$('search-input').addEventListener('input', renderSearch);
+function renderSearch(){
+  const q = ($('search-input').value||'').toLowerCase().trim();
+  const out = $('result-list');
+  const machineToSlot = {};
+  for (const [s,a] of Object.entries(ASSIGNMENTS)) machineToSlot[a.machine_code] = s;
+  const machineToLine = {};
+  for (const [s,a] of Object.entries(LINE_ASSIGNMENTS)) machineToLine[a.machine_code] = s;
+  let items = INV_ACTIVE.filter(m => {
+    const placed = machineToSlot[m.code] || machineToLine[m.code];
+    if (searchFilter === 'stock' && m.source !== 'stock') return false;
+    if (searchFilter === 'rental' && m.source !== 'rental') return false;
+    if (searchFilter === 'assigned' && !placed) return false;
+    if (searchFilter === 'free' && placed) return false;
+    if (!q) return true;
+    return [m.code, m.type, m.brand, m.model, m.serial, m.fixed_asset].some(v => (v||'').toLowerCase().includes(q));
+  }).slice(0, 200);
+  if (!items.length) { out.innerHTML = '<div class="hint">No machines match.</div>'; return; }
+  out.innerHTML = items.map(m => {
+    const slot = machineToSlot[m.code];
+    const lineSlot = machineToLine[m.code];
+    let tag;
+    if (slot) tag = `<div class="slot-tag assigned">Rack ${escapeHtml(slot)}</div>`;
+    else if (lineSlot) {
+      const ls = LINE_SLOTS.find(s=>s.slot_id===lineSlot);
+      const ln = ls ? LINES.find(l=>l.line_id===ls.line_id) : null;
+      const lbl = ln ? (/^\d/.test(ln.label)?'Line '+ln.label:ln.label)+' #'+ls.position : lineSlot;
+      tag = `<div class="slot-tag assigned" style="background:#E4F1EE;color:var(--ok)">${escapeHtml(lbl)}</div>`;
+    } else tag = `<div class="slot-tag free">free</div>`;
+    return `<div class="result" data-code="${escapeHtml(m.code)}">
+      <div class="code">${escapeHtml(m.code)}</div>
+      <div class="info">
+        <div class="type">${escapeHtml(m.type||'')}${m.brand?' · '+escapeHtml(m.brand):''}</div>
+        <div class="meta">${escapeHtml(m.model||'')} ${m.serial?'· '+escapeHtml(m.serial):''}${m.fixed_asset?' · FA '+escapeHtml(m.fixed_asset):''}</div>
+      </div>
+      ${tag}
+    </div>`;
+  }).join('');
+  out.querySelectorAll('.result').forEach(el => el.addEventListener('click', () => {
+    const code = el.dataset.code;
+    const slot = machineToSlot[code];
+    const lineSlot = machineToLine[code];
+    if (slot) openSlotSheet(slot);
+    else if (lineSlot) { showTab('lines'); setTimeout(()=>openLineSlotSheet(lineSlot), 80); }
+    else {
+      showTab('assign');
+      setTimeout(() => { $('machine-input').value = code; updateMachinePreview(); $('slot-select').focus(); }, 50);
+    }
+  }));
+}
+
+// ============================================================
+//  INVENTORY TAB — add/edit/retire/restore machines
+// ============================================================
+let invFilter = 'active';
+
+function renderInventory(){
+  const q = ($('inv-search-input').value || '').toLowerCase().trim();
+  const machineToSlot = {};
+  for (const [s,a] of Object.entries(ASSIGNMENTS)) machineToSlot[a.machine_code] = s;
+  const machineToLine = {};
+  for (const [s,a] of Object.entries(LINE_ASSIGNMENTS)) machineToLine[a.machine_code] = s;
+
+  let items = INVENTORY.filter(m => {
+    if (invFilter === 'retired') return isRetired(m);
+    if (isRetired(m)) return false;
+    if (invFilter === 'stock' && m.source !== 'stock') return false;
+    if (invFilter === 'rental' && m.source !== 'rental') return false;
+    return true;
+  });
+  if (q) items = items.filter(m =>
+    [m.code, m.type, m.brand, m.model, m.serial, m.fixed_asset]
+      .some(v => (v||'').toLowerCase().includes(q))
+  );
+  items.sort((a,b) => (a.code||'').localeCompare(b.code||'', undefined, {numeric:true}));
+
+  $('inv-count').textContent = `${items.length} machine${items.length===1?'':'s'}` +
+    (invFilter === 'active' ? ' · active' :
+     invFilter === 'retired' ? ' · retired' :
+     ' · ' + invFilter);
+
+  const out = $('inv-list');
+  if (!items.length) {
+    out.innerHTML = '<div class="hint" style="padding:14px;text-align:center">No machines match.</div>';
+    return;
+  }
+  const MAX = 200;
+  const shown = items.slice(0, MAX);
+  out.innerHTML = shown.map(m => {
+    const slot = machineToSlot[m.code];
+    const lineSlot = machineToLine[m.code];
+    const retiredTag = isRetired(m) ? '<span class="slot-tag" style="background:#FBEFEF;color:var(--err)">retired</span>' : '';
+    let locTag;
+    if (slot) {
+      locTag = `<span class="slot-tag assigned">Rack ${escapeHtml(slot)}</span>`;
+    } else if (lineSlot) {
+      locTag = `<span class="slot-tag assigned" style="background:#E4F1EE;color:var(--ok)">${escapeHtml(lineSlotLabel(lineSlot))}</span>`;
+    } else {
+      locTag = isRetired(m) ? '' : '<span class="slot-tag free">free</span>';
+    }
+    return `<div class="result" data-code="${escapeHtml(m.code)}">
+      <div class="code">${escapeHtml(m.code)}</div>
+      <div class="info">
+        <div class="type">${escapeHtml(m.type||'')}${m.brand?' · '+escapeHtml(m.brand):''}</div>
+        <div class="meta">${escapeHtml(m.model||'')} ${m.serial?'· '+escapeHtml(m.serial):''}${m.fixed_asset?' · FA '+escapeHtml(m.fixed_asset):''}</div>
+      </div>
+      ${retiredTag}${locTag}
+    </div>`;
+  }).join('') + (items.length > MAX ? `<div class="hint" style="padding:8px;text-align:center">Showing first ${MAX} of ${items.length}. Refine search to narrow.</div>` : '');
+
+  out.querySelectorAll('.result').forEach(el => el.addEventListener('click', () => {
+    openMachineSheet(el.dataset.code);
+  }));
+}
+
+// Resolve a line slot_id into a friendly label like "Line 6 #1"
+function lineSlotLabel(lineSlotId){
+  const ls = LINE_SLOTS.find(s => s.slot_id === lineSlotId);
+  if (!ls) return lineSlotId;
+  const ln = LINES.find(l => l.line_id === ls.line_id);
+  const lbl = ln ? (/^\d/.test(ln.label) ? 'Line '+ln.label : ln.label) : ls.line_id;
+  return `${lbl} #${ls.position}`;
+}
+
+$('inv-search-input').addEventListener('input', renderInventory);
+$('inv-filter-chips').addEventListener('click', e => {
+  if (!e.target.classList.contains('chip')) return;
+  $('inv-filter-chips').querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  e.target.classList.add('active');
+  invFilter = e.target.dataset.f;
+  renderInventory();
+});
+
+// ---------------- Edit / add machine sheet ------------------------
+function openMachineSheet(code) {
+  const m = code ? INV_BY_CODE[code] : null;
+  const isNew = !m;
+  const sh = $('machine-sheet');
+  $('ms-title').textContent = isNew ? 'Add new machine' : (isRetired(m) ? 'Retired machine' : 'Edit machine');
+  const machineToSlot = {};
+  for (const [s,a] of Object.entries(ASSIGNMENTS)) machineToSlot[a.machine_code] = s;
+  const onRack = m && machineToSlot[m.code];
+  const machineToLine = {};
+  for (const [s,a] of Object.entries(LINE_ASSIGNMENTS)) machineToLine[a.machine_code] = s;
+  const onLine = m && machineToLine[m.code];
+
+  $('ms-body').innerHTML = `
+    <div class="field">
+      <label for="mf-code">Machine code ${isNew ? '<span style="color:var(--err)">*</span>' : '<span style="color:var(--grey);text-transform:none;font-weight:400">(cannot be changed once created)</span>'}</label>
+      <input id="mf-code" placeholder="e.g. BT-25" value="${escapeHtml(m?.code || '')}" ${isNew ? '' : 'readonly style="background:#F4F7FA;color:var(--grey)"'}>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="field">
+        <label for="mf-type">Type</label>
+        <input id="mf-type" list="type-list" placeholder="e.g. Lockstitch" value="${escapeHtml(m?.type || '')}">
+        <datalist id="type-list">
+          ${[...new Set(INVENTORY.map(x=>x.type).filter(Boolean))].sort().map(t=>`<option value="${escapeHtml(t)}">`).join('')}
+        </datalist>
+      </div>
+      <div class="field">
+        <label for="mf-source">Source <span style="color:var(--err)">*</span></label>
+        <select id="mf-source">
+          <option value="stock"  ${(m?.source||'stock')==='stock'?'selected':''}>Stock (Pactics-owned)</option>
+          <option value="rental" ${m?.source==='rental'?'selected':''}>Rental</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="field">
+        <label for="mf-brand">Brand</label>
+        <input id="mf-brand" placeholder="e.g. Jack" value="${escapeHtml(m?.brand || '')}">
+      </div>
+      <div class="field">
+        <label for="mf-model">Model</label>
+        <input id="mf-model" placeholder="e.g. JK-T1900GSK-D" value="${escapeHtml(m?.model || '')}">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="field">
+        <label for="mf-cond">Condition</label>
+        <select id="mf-cond">
+          <option value=""        ${!m?.condition?'selected':''}>—</option>
+          <option value="New"     ${m?.condition==='New'?'selected':''}>New</option>
+          <option value="Medium"  ${m?.condition==='Medium'?'selected':''}>Medium</option>
+          <option value="Old"     ${m?.condition==='Old'?'selected':''}>Old</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="mf-fa">Fixed asset #</label>
+        <input id="mf-fa" placeholder="e.g. FM-24-05-004" value="${escapeHtml(m?.fixed_asset || '')}">
+      </div>
+    </div>
+    <div class="field">
+      <label for="mf-serial">Serial number</label>
+      <input id="mf-serial" placeholder="e.g. 23093550448" value="${escapeHtml(m?.serial || '')}">
+    </div>
+    ${!isNew ? `
+      <div class="field">
+        <label>Status</label>
+        <div style="color:var(--grey);font-size:13px">
+          ${isRetired(m)
+            ? `<span style="color:var(--err);font-weight:700">RETIRED</span> on ${fmtTimeFull(m.retired_at)}`
+            : (onRack
+                ? `<span style="color:var(--ok);font-weight:700">ON RACK</span> at ${escapeHtml(onRack)}`
+                : (onLine
+                    ? `<span style="color:var(--ok);font-weight:700">ON LINE</span> at ${escapeHtml(lineSlotLabel(onLine))}`
+                    : '<span style="font-weight:700">ACTIVE</span> · not assigned'))}
+          ${m.updated_by_email ? `<br><span style="font-size:11px">Last edited by ${escapeHtml(m.updated_by_email)} · ${fmtTimeFull(m.updated_at)}</span>` : ''}
+        </div>
+      </div>` : ''}
+    <div class="actions">
+      <button class="btn btn-primary" id="mf-save">${isNew ? 'Add machine' : 'Save changes'}</button>
+      ${!isNew && !isRetired(m) ? '<button class="btn btn-danger" id="mf-retire">Retire</button>' : ''}
+      ${!isNew && isRetired(m)  ? '<button class="btn btn-secondary" id="mf-restore">Restore</button>' : ''}
+      <button class="btn btn-secondary" id="mf-cancel">Cancel</button>
+    </div>
+  `;
+  sh.classList.add('open');
+  $('ms-close').onclick = () => sh.classList.remove('open');
+  $('mf-cancel').onclick = () => sh.classList.remove('open');
+  sh.onclick = e => { if (e.target === sh) sh.classList.remove('open'); };
+
+  $('mf-save').onclick = async () => {
+    const code   = ($('mf-code').value || '').trim();
+    const type   = ($('mf-type').value || '').trim();
+    const brand  = ($('mf-brand').value || '').trim();
+    const model  = ($('mf-model').value || '').trim();
+    const cond   = ($('mf-cond').value || '').trim();
+    const fa     = ($('mf-fa').value || '').trim();
+    const serial = ($('mf-serial').value || '').trim();
+    const source = ($('mf-source').value || 'stock');
+    if (!code) { toast('Machine code is required.', 'err'); return; }
+    if (!/^[A-Za-z0-9_\-\.]+$/.test(code)) { toast('Code: letters, digits, dash, underscore, dot only.', 'err'); return; }
+
+    if (isNew) {
+      // uniqueness check — case-insensitive
+      const conflict = INVENTORY.find(x => normLookup(x.code) === normLookup(code));
+      if (conflict) {
+        if (isRetired(conflict)) {
+          if (!confirm(`A retired machine with code "${conflict.code}" already exists. Restore it instead of creating a new one?`)) return;
+          // restore that one with new details
+          const { error } = await sb.from('machines').update({
+            retired_at: null, type, brand, model, condition: cond, fixed_asset: fa, serial, source,
+            updated_at: new Date().toISOString(),
+            updated_by: SESSION.user.id, updated_by_email: SESSION.user.email
+          }).eq('code', conflict.code);
+          if (error) { toast('Restore failed: ' + error.message, 'err'); return; }
+          sh.classList.remove('open');
+          toast(`${conflict.code} restored.`, 'ok');
+          await loadAll(); renderInventory();
+          return;
+        } else {
+          toast(`Code "${conflict.code}" already exists.`, 'err'); return;
+        }
+      }
+      // FA/serial collision warning (not blocking)
+      if (fa) {
+        const c = INVENTORY.find(x => x.code !== code && !isRetired(x) && normLookup(x.fixed_asset) === normLookup(fa));
+        if (c && !confirm(`FA "${fa}" is also on machine ${c.code}. Add this one anyway?`)) return;
+      }
+      if (serial) {
+        const c = INVENTORY.find(x => x.code !== code && !isRetired(x) && normLookup(x.serial) === normLookup(serial));
+        if (c && !confirm(`Serial "${serial}" is also on machine ${c.code}. Add this one anyway?`)) return;
+      }
+      const { error } = await sb.from('machines').insert({
+        code, type, brand, model, condition: cond, fixed_asset: fa, serial, source,
+        updated_at: new Date().toISOString(),
+        updated_by: SESSION.user.id, updated_by_email: SESSION.user.email
+      });
+      if (error) { toast('Add failed: ' + error.message, 'err'); return; }
+      sh.classList.remove('open');
+      toast(`${code} added.`, 'ok');
+      await loadAll(); renderInventory();
+    } else {
+      // edit existing
+      const { error } = await sb.from('machines').update({
+        type, brand, model, condition: cond, fixed_asset: fa, serial, source,
+        updated_at: new Date().toISOString(),
+        updated_by: SESSION.user.id, updated_by_email: SESSION.user.email
+      }).eq('code', m.code);
+      if (error) { toast('Save failed: ' + error.message, 'err'); return; }
+      sh.classList.remove('open');
+      toast(`${m.code} updated.`, 'ok');
+      await loadAll(); renderInventory();
+    }
+  };
+
+  const retireBtn = $('mf-retire');
+  if (retireBtn) retireBtn.onclick = async () => {
+    if (onRack) {
+      toast(`${m.code} is on rack at ${onRack}. Remove it from the rack first.`, 'err');
+      return;
+    }
+    if (onLine) {
+      toast(`${m.code} is on ${lineSlotLabel(onLine)}. Remove it from the line first.`, 'err');
+      return;
+    }
+    if (!confirm(`Retire ${m.code}? It will be hidden from search/assign but its history is kept. You can restore it later from the Retired filter.`)) return;
+    const { error } = await sb.from('machines').update({
+      retired_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      updated_by: SESSION.user.id, updated_by_email: SESSION.user.email
+    }).eq('code', m.code);
+    if (error) { toast('Retire failed: ' + error.message, 'err'); return; }
+    sh.classList.remove('open');
+    toast(`${m.code} retired.`, 'ok');
+    await loadAll(); renderInventory();
+  };
+
+  const restoreBtn = $('mf-restore');
+  if (restoreBtn) restoreBtn.onclick = async () => {
+    if (!confirm(`Restore ${m.code} to active inventory?`)) return;
+    const { error } = await sb.from('machines').update({
+      retired_at: null,
+      updated_at: new Date().toISOString(),
+      updated_by: SESSION.user.id, updated_by_email: SESSION.user.email
+    }).eq('code', m.code);
+    if (error) { toast('Restore failed: ' + error.message, 'err'); return; }
+    sh.classList.remove('open');
+    toast(`${m.code} restored.`, 'ok');
+    await loadAll(); renderInventory();
+  };
+}
+
+$('btn-add-machine').addEventListener('click', () => openMachineSheet(null));
+
+// ============================================================
+//  LINES — sewing-line floor view + tap-to-assign
+// ============================================================
+function lineMachineToSlot(){
+  const map = {};
+  for (const [s,a] of Object.entries(LINE_ASSIGNMENTS)) map[a.machine_code] = s;
+  return map;
+}
+
+function renderLines(){
+  // building selector chips
+  const bt = $('building-tabs');
+  if (!BUILDINGS.length) {
+    $('lines-container').innerHTML = '<div class="hint" style="padding:14px;text-align:center">No line data found. Run the sewing-line setup SQL in Supabase first.</div>';
+    bt.innerHTML = '';
+    return;
+  }
+  if (!activeBuilding) activeBuilding = BUILDINGS[0].code;
+  bt.innerHTML = BUILDINGS.map(b =>
+    `<button class="bldg-chip ${b.code===activeBuilding?'active':''}" data-bldg="${escapeHtml(b.code)}">${escapeHtml(b.name)}</button>`
+  ).join('');
+  bt.querySelectorAll('.bldg-chip').forEach(el => el.onclick = () => {
+    activeBuilding = el.dataset.bldg; renderLines(); window.scrollTo(0,0);
+  });
+
+  const container = $('lines-container');
+  const linesInBldg = LINES.filter(l => l.building_code === activeBuilding);
+  let totalSlots = 0, totalFilled = 0;
+  let html = '';
+  for (const line of linesInBldg) {
+    const slots = LINE_SLOTS.filter(s => s.line_id === line.line_id).sort((a,b)=>a.position-b.position);
+    const filled = slots.filter(s => LINE_ASSIGNMENTS[s.slot_id]).length;
+    totalSlots += slots.length; totalFilled += filled;
+
+    function slotHtml(s){
+      if (!s) return `<div class="lslot-spacer"></div>`;
+      const a = LINE_ASSIGNMENTS[s.slot_id];
+      if (a) {
+        const inv = INV_BY_CODE[a.machine_code] || { type:'' };
+        return `<div class="lslot filled" data-slot="${escapeHtml(s.slot_id)}">
+          <span class="lslot-pos">${s.position}</span>
+          <span class="lslot-machine">${escapeHtml(a.machine_code)}<span class="type">${escapeHtml(inv.type||'')}</span></span>
+        </div>`;
+      }
+      return `<div class="lslot empty" data-slot="${escapeHtml(s.slot_id)}">
+        <span class="lslot-pos">${s.position}</span>
+        <span class="lslot-machine">empty</span>
+      </div>`;
+    }
+
+    // Two facing rows: odd positions (1,3,5…) on top, even (2,4,6…) below.
+    // Each consecutive pair shares one column so 1 faces 2, 3 faces 4, etc.
+    const odd = slots.filter(s => s.position % 2 === 1);
+    const even = slots.filter(s => s.position % 2 === 0);
+    const cols = Math.max(odd.length, even.length);
+    let topRow = '', botRow = '';
+    for (let i = 0; i < cols; i++) {
+      topRow += slotHtml(odd[i] || null);
+      botRow += slotHtml(even[i] || null);
+    }
+
+    html += `<div class="line-block">
+      <div class="line-head">
+        <span class="line-name">${escapeHtml(line.label)}</span>
+        <span class="line-title">${/^\d/.test(line.label) ? 'Line '+escapeHtml(line.label) : escapeHtml(line.label)}</span>
+        <span class="line-count">${filled} / ${slots.length} machines</span>
+      </div>
+      <div class="line-facing" style="--cols:${cols}">
+        <div class="facing-row">${topRow}</div>
+        <div class="facing-divider"></div>
+        <div class="facing-row">${botRow}</div>
+      </div>
+    </div>`;
+  }
+  const bldgName = (BUILDINGS.find(b=>b.code===activeBuilding)||{}).name || '';
+  container.innerHTML =
+    `<div class="bldg-summary">${escapeHtml(bldgName)} · ${totalFilled} / ${totalSlots} positions filled · ${linesInBldg.length} lines</div>` + html;
+  container.querySelectorAll('.lslot').forEach(el => el.addEventListener('click', () => openLineSlotSheet(el.dataset.slot)));
+}
+
+function openLineSlotSheet(slotId){
+  const slot = LINE_SLOTS.find(s => s.slot_id === slotId);
+  if (!slot) return;
+  const line = LINES.find(l => l.line_id === slot.line_id);
+  const a = LINE_ASSIGNMENTS[slotId];
+  const sh = $('lineslot-sheet');
+  const head = $('ls-slot-id');
+  head.className = 'slot-big row-A';
+  head.querySelector('span:last-child').textContent =
+    (line ? (/^\d/.test(line.label)?'Line '+line.label:line.label) : '') + ' · pos ' + slot.position;
+  const body = $('ls-body');
+
+  if (a) {
+    const inv = INV_BY_CODE[a.machine_code] || {};
+    body.innerHTML = `
+      <div class="preview" style="margin-bottom:10px">
+        <div><div class="code">${escapeHtml(a.machine_code)}</div>
+        <div class="meta">${escapeHtml(inv.type||'')}${inv.brand?' · '+escapeHtml(inv.brand):''}${inv.model?' · '+escapeHtml(inv.model):''}</div></div>
+        <div class="ok">ON LINE</div>
+      </div>
+      ${a.notes?`<div class="field"><label>Notes</label><div>${escapeHtml(a.notes)}</div></div>`:''}
+      <div class="field"><label>Last updated</label>
+        <div>${fmtTimeFull(a.updated_at)} by <b>${escapeHtml(a.updated_by_email||'—')}</b></div></div>
+      <div class="actions">
+        <button class="btn btn-primary" id="ls-reassign">Reassign / replace</button>
+        <button class="btn btn-danger" id="ls-remove">Remove from line</button>
+      </div>`;
+  } else {
+    body.innerHTML = `
+      <div class="preview" style="margin-bottom:10px">
+        <div><div class="code">Empty position</div><div class="meta">No machine here</div></div>
+      </div>
+      <div class="field ac-wrap" id="ls-mc-wrap">
+        <label for="ls-machine-input">Machine code, fixed asset, or serial</label>
+        <input id="ls-machine-input" autocomplete="off" placeholder="e.g. LS-34 · FM-24-05-004 · serial">
+        <div class="ac-list" id="ls-ac-list"></div>
+      </div>
+      <div id="ls-machine-preview" style="display:none"></div>
+      <div class="field"><label for="ls-notes">Notes (optional)</label>
+        <input id="ls-notes" placeholder="e.g. moved from rack"></div>
+      <div class="actions">
+        <button class="btn btn-primary" id="ls-assign">Assign machine</button>
+      </div>`;
+  }
+  sh.classList.add('open');
+  $('ls-close').onclick = () => sh.classList.remove('open');
+  sh.onclick = e => { if (e.target === sh) sh.classList.remove('open'); };
+
+  const reassign = $('ls-reassign'), remove = $('ls-remove'), assign = $('ls-assign');
+  if (reassign) reassign.onclick = () => { showLineAssignInput(slotId); };
+  if (remove) remove.onclick = async () => {
+    if (!confirm(`Remove ${a.machine_code} from this position?`)) return;
+    await removeLineAssignment(slotId);
+    delete LINE_ASSIGNMENTS[slotId];
+    sh.classList.remove('open');
+    renderLines();
+    toast(`${a.machine_code} removed`, 'ok');
+  };
+  if (assign) {
+    setupLineMachineAutocomplete();
+    $('ls-assign').onclick = () => doLineAssign(slotId);
+  }
+}
+
+function showLineAssignInput(slotId){
+  // turn the sheet into the assign form (for replace)
+  const body = $('ls-body');
+  body.innerHTML = `
+    <div class="field ac-wrap" id="ls-mc-wrap">
+      <label for="ls-machine-input">New machine (code, FA, or serial)</label>
+      <input id="ls-machine-input" autocomplete="off" placeholder="e.g. LS-34">
+      <div class="ac-list" id="ls-ac-list"></div>
+    </div>
+    <div id="ls-machine-preview" style="display:none"></div>
+    <div class="field"><label for="ls-notes">Notes (optional)</label><input id="ls-notes"></div>
+    <div class="actions"><button class="btn btn-primary" id="ls-assign">Save</button></div>`;
+  setupLineMachineAutocomplete();
+  $('ls-assign').onclick = () => doLineAssign(slotId);
+  $('ls-machine-input').focus();
+}
+
+function setupLineMachineAutocomplete(){
+  const inp = $('ls-machine-input'), list = $('ls-ac-list'), prev = $('ls-machine-preview');
+  if (!inp) return;
+  inp.addEventListener('input', () => {
+    const q = inp.value.trim().toLowerCase();
+    // preview
+    const m = findMachine(inp.value.trim());
+    if (!inp.value.trim()) { prev.style.display='none'; }
+    else if (m) {
+      const lmap = lineMachineToSlot();
+      const rackSlot = Object.entries(ASSIGNMENTS).find(([s,x])=>x.machine_code===m.code);
+      const lineSlot = lmap[m.code];
+      let where = '';
+      if (rackSlot) where = `<div class="err">Currently on rack at ${rackSlot[0]} — will be moved here.</div>`;
+      else if (lineSlot) where = `<div class="err">Currently at line slot ${lineSlot} — will be moved here.</div>`;
+      else where = `<div class="ok">${(m.source||'').toUpperCase()}</div>`;
+      prev.innerHTML = `<div class="preview" style="margin-bottom:10px"><div>
+        <div class="code">${escapeHtml(m.code)}</div>
+        <div class="meta">${escapeHtml(m.type||'')}${m.brand?' · '+escapeHtml(m.brand):''}</div></div>${where}</div>`;
+      prev.style.display='block';
+    } else {
+      prev.innerHTML = `<div class="preview" style="margin-bottom:10px"><div>
+        <div class="code" style="color:var(--err)">${escapeHtml(inp.value.trim())}</div>
+        <div class="meta">Not found by code, FA, or serial.</div></div><div class="err">UNKNOWN</div></div>`;
+      prev.style.display='block';
+    }
+    // autocomplete
+    if (!q) { list.classList.remove('open'); return; }
+    const hits = INV_ACTIVE.filter(x =>
+      (x.code||'').toLowerCase().includes(q) || (x.fixed_asset||'').toLowerCase().includes(q) || (x.serial||'').toLowerCase().includes(q)
+    ).slice(0,8);
+    if (!hits.length) { list.classList.remove('open'); return; }
+    list.innerHTML = hits.map(x => `<div class="ac-item" data-code="${escapeHtml(x.code)}">
+      <b>${escapeHtml(x.code)}</b> <span style="color:var(--grey)">${escapeHtml(x.type||'')}</span>
+      <div class="meta">${escapeHtml(x.brand||'')} ${escapeHtml(x.model||'')}${x.fixed_asset?' · FA '+escapeHtml(x.fixed_asset):''}</div>
+    </div>`).join('');
+    list.classList.add('open');
+    list.querySelectorAll('.ac-item').forEach(it => it.onclick = () => {
+      inp.value = it.dataset.code; list.classList.remove('open'); inp.dispatchEvent(new Event('input'));
+    });
+  });
+  inp.addEventListener('blur', () => setTimeout(()=>list.classList.remove('open'), 150));
+}
+
+async function doLineAssign(slotId){
+  const raw = ($('ls-machine-input').value||'').trim();
+  const notes = ($('ls-notes')?.value||'').trim();
+  if (!raw) { toast('Enter a machine.', 'err'); return; }
+  const m = findMachine(raw);
+  if (!m) { toast('Not found in inventory.', 'err'); $('ls-machine-input').select(); return; }
+  const btn = $('ls-assign'); btn.disabled = true; btn.textContent = 'Saving…';
+  const res = await saveLineAssignment(slotId, m.code, notes);
+  btn.disabled = false; btn.textContent = 'Save';
+  if (!res.ok) { toast(res.error, 'err'); return; }
+  // update local state (DB trigger removes it from rack automatically)
+  LINE_ASSIGNMENTS[slotId] = {
+    slot_id: slotId, machine_code: res.code, notes: notes||null,
+    updated_at: new Date().toISOString(), updated_by: SESSION.user.id, updated_by_email: SESSION.user.email
+  };
+  // remove from any other line slot locally
+  for (const [s,a] of Object.entries(LINE_ASSIGNMENTS)) if (s!==slotId && a.machine_code===res.code) delete LINE_ASSIGNMENTS[s];
+  // remove from rack locally (trigger did it server-side)
+  for (const [s,a] of Object.entries(ASSIGNMENTS)) if (a.machine_code===res.code) delete ASSIGNMENTS[s];
+  $('lineslot-sheet').classList.remove('open');
+  renderLines(); renderRack(); updateHeaderStats();
+  toast(`${res.code} → ${slotId}`, 'ok');
+}
+
+async function saveLineAssignment(slotId, code, notes){
+  const m = findMachine(code);
+  if (!m) return { ok:false, error:'Machine not found: '+code };
+  const canonical = m.code;
+  // free it from any previous LINE slot
+  const prev = Object.entries(LINE_ASSIGNMENTS).find(([s,a]) => a.machine_code===canonical && s!==slotId);
+  if (prev) {
+    const { error } = await sb.from('line_assignments').delete().eq('slot_id', prev[0]);
+    if (error) return { ok:false, error:error.message };
+  }
+  const { error } = await sb.from('line_assignments').upsert({
+    slot_id: slotId, machine_code: canonical, notes: notes||null,
+    updated_at: new Date().toISOString(), updated_by: SESSION.user.id, updated_by_email: SESSION.user.email
+  }, { onConflict: 'slot_id' });
+  if (error) return { ok:false, error:error.message };
+  // log to history (shared audit)
+  await sb.from('history').insert({
+    slot_id: slotId, machine_code: canonical, action: 'line-assigned', notes,
+    user_id: SESSION.user.id, user_email: SESSION.user.email
+  });
+  return { ok:true, code: canonical };
+}
+
+async function removeLineAssignment(slotId){
+  const a = LINE_ASSIGNMENTS[slotId]; if (!a) return;
+  const { error } = await sb.from('line_assignments').delete().eq('slot_id', slotId);
+  if (error) { toast('Could not remove: '+error.message, 'err'); return; }
+  await sb.from('history').insert({
+    slot_id: slotId, machine_code: a.machine_code, action: 'line-removed',
+    user_id: SESSION.user.id, user_email: SESSION.user.email
+  });
+}
+
+// Jump-to-machine search on the lines view
+$('line-search-input').addEventListener('input', () => {
+  const q = ($('line-search-input').value||'').trim().toLowerCase();
+  if (!q) return;
+  const m = findMachine($('line-search-input').value.trim());
+  if (!m) return;
+  const lmap = lineMachineToSlot();
+  const slotId = lmap[m.code];
+  if (slotId) {
+    const slot = LINE_SLOTS.find(s=>s.slot_id===slotId);
+    const line = LINES.find(l=>l.line_id===slot.line_id);
+    if (line && line.building_code !== activeBuilding) { activeBuilding = line.building_code; renderLines(); }
+    setTimeout(() => {
+      const el = document.querySelector(`.lslot[data-slot="${slotId}"]`);
+      if (el) { el.scrollIntoView({behavior:'smooth', block:'center'}); flashLineSlot(slotId); }
+    }, 100);
+  }
+});
+
+// ============================================================
+//  DATA VIEW
+// ============================================================
+function renderData(){
+  // --- Rack stats ---
+  const n = Object.keys(ASSIGNMENTS).length;
+  $('d-total').textContent = n; $('d-free').textContent = 45 - n;
+  let rA=0,rB=0,rC=0;
+  for (const s of Object.keys(ASSIGNMENTS)) { if (s[0]==='A') rA++; else if (s[0]==='B') rB++; else if (s[0]==='C') rC++; }
+  $('d-rowA').textContent = rA + ' / 15';
+  $('d-rowB').textContent = rB + ' / 15';
+  $('d-rowC').textContent = rC + ' / 15';
+  const types = new Set();
+  for (const a of Object.values(ASSIGNMENTS)) { const m = INV_BY_CODE[a.machine_code]; if (m && m.type) types.add(m.type); }
+  $('d-types').textContent = types.size;
+
+  // --- Line stats ---
+  const lineUsed = Object.keys(LINE_ASSIGNMENTS).length;
+  const lineTotal = LINE_SLOTS.length;
+  if ($('d-line-used')) $('d-line-used').textContent = lineUsed;
+  if ($('d-line-total')) $('d-line-total').textContent = lineTotal;
+  if ($('d-line-count')) $('d-line-count').textContent = LINES.length;
+  if ($('d-bldg-count')) $('d-bldg-count').textContent = BUILDINGS.length;
+
+  // per-building breakdown
+  if ($('d-bldg-breakdown')) {
+    const slotToBldg = {};
+    for (const s of LINE_SLOTS) {
+      const ln = LINES.find(l => l.line_id === s.line_id);
+      if (ln) slotToBldg[s.slot_id] = ln.building_code;
+    }
+    const perB = {};
+    for (const b of BUILDINGS) perB[b.code] = { name:b.name, used:0, total:0 };
+    for (const s of LINE_SLOTS) { const bc = slotToBldg[s.slot_id]; if (perB[bc]) perB[bc].total++; }
+    for (const slotId of Object.keys(LINE_ASSIGNMENTS)) { const bc = slotToBldg[slotId]; if (perB[bc]) perB[bc].used++; }
+    $('d-bldg-breakdown').innerHTML = BUILDINGS.map(b => {
+      const x = perB[b.code];
+      return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #EAEFF3">
+        <span>${escapeHtml(x.name)}</span><span><b style="color:var(--dark)">${x.used}</b> / ${x.total} filled</span></div>`;
+    }).join('');
+  }
+
+  // --- Overview (whole operation) ---
+  const onRack = n;
+  const onLines = lineUsed;
+  const deployed = onRack + onLines;
+  // a machine is "unassigned" if active and not on rack or line
+  const placed = new Set([...Object.values(ASSIGNMENTS).map(a=>a.machine_code), ...Object.values(LINE_ASSIGNMENTS).map(a=>a.machine_code)]);
+  const unassigned = INV_ACTIVE.filter(m => !placed.has(m.code)).length;
+  const retired = INVENTORY.filter(isRetired).length;
+  if ($('d-deployed')) $('d-deployed').textContent = deployed;
+  if ($('d-on-rack')) $('d-on-rack').textContent = onRack;
+  if ($('d-on-lines')) $('d-on-lines').textContent = onLines;
+  if ($('d-unassigned')) $('d-unassigned').textContent = unassigned;
+  if ($('d-active')) $('d-active').textContent = INV_ACTIVE.length;
+  if ($('d-retired')) $('d-retired').textContent = retired;
+
+  // --- About line ---
+  const stock = INV_ACTIVE.filter(m => m.source === 'stock').length;
+  const rental = INV_ACTIVE.filter(m => m.source === 'rental').length;
+  const inv = $('about-inv-count');
+  if (inv) inv.textContent = `${INV_ACTIVE.length} active machines (${stock} stock + ${rental} rental)${retired? ' · ' + retired + ' retired' : ''}`;
+}
+$('exp-csv').onclick = () => {
+  const rows = [['Slot','Machine Code','Type','Brand','Model','Condition','Fixed Asset','Serial','Source','Notes','Last Updated At','Last Updated By']];
+  for (const id of SLOTS_LIST) {
+    const a = ASSIGNMENTS[id];
+    if (a) {
+      const m = INV_BY_CODE[a.machine_code] || {};
+      rows.push([id, a.machine_code, m.type||'', m.brand||'', m.model||'', m.condition||'', m.fixed_asset||'', m.serial||'', m.source||'', a.notes||'', a.updated_at||'', a.updated_by_email||'']);
+    } else {
+      rows.push([id,'','','','','','','','','','','']);
+    }
+  }
+  const csv = rows.map(r => r.map(v => {
+    v = v==null?'':String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v;
+  }).join(',')).join('\n');
+  const blob = new Blob([csv], { type:'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `pactics_rack_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+
+const expLinesBtn = $('exp-lines-csv');
+if (expLinesBtn) expLinesBtn.onclick = () => {
+  const rows = [['Building','Line','Position','Slot ID','Machine Code','Type','Brand','Model','Fixed Asset','Serial','Notes','Last Updated At','Last Updated By']];
+  // sort line slots by building/line order then position
+  const lineOrder = {}; LINES.forEach(l => lineOrder[l.line_id] = l.sort_order);
+  const bldgName = {}; BUILDINGS.forEach(b => bldgName[b.code] = b.name);
+  const sorted = [...LINE_SLOTS].sort((x,y) => (lineOrder[x.line_id]-lineOrder[y.line_id]) || (x.position-y.position));
+  for (const s of sorted) {
+    const ln = LINES.find(l => l.line_id === s.line_id) || {};
+    const a = LINE_ASSIGNMENTS[s.slot_id];
+    const m = a ? (INV_BY_CODE[a.machine_code] || {}) : {};
+    rows.push([
+      bldgName[ln.building_code]||ln.building_code||'', ln.label||'', s.position, s.slot_id,
+      a?a.machine_code:'', m.type||'', m.brand||'', m.model||'', m.fixed_asset||'', m.serial||'',
+      a?(a.notes||''):'', a?(a.updated_at||''):'', a?(a.updated_by_email||''):''
+    ]);
+  }
+  const csv = rows.map(r => r.map(v => { v = v==null?'':String(v); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }).join(',')).join('\n');
+  const blob = new Blob([csv], { type:'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `pactics_lines_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+
+// ============================================================
+//  QR SCANNER
+// ============================================================
+let scanStream=null, scanInterval=null, scanDetector=null;
+async function startScanner(){
+  if (!('BarcodeDetector' in window)) {
+    toast('Your browser does not support QR scanning — pick from the list instead.', 'err');
+    return;
+  }
+  $('scan-sheet').classList.add('open');
+  $('scan-msg').textContent = 'Starting camera…';
+  try {
+    scanDetector = new BarcodeDetector({ formats: ['qr_code'] });
+    scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    const video = $('scanner-video');
+    video.srcObject = scanStream;
+    await video.play();
+    $('scan-msg').textContent = 'Point camera at the QR label…';
+    scanInterval = setInterval(async () => {
+      try {
+        const codes = await scanDetector.detect(video);
+        if (codes && codes.length) onScanned(codes[0].rawValue);
+      } catch {}
+    }, 250);
+  } catch (e) {
+    $('scan-msg').textContent = 'Camera access blocked. Allow camera in your browser settings.';
+  }
+}
+function stopScanner(){
+  if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+  if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+  $('scan-sheet').classList.remove('open');
+}
+function onScanned(value){
+  stopScanner();
+  const v = value && value.trim();
+  if (/^[ABC]-[1-5]-[1-3]$/.test(v)) {
+    showTab('assign');
+    setTimeout(() => { $('slot-select').value = v; updateSlotPreview(); $('machine-input').focus(); }, 50);
+    toast(`Slot ${v} selected`, 'ok');
+  } else if (/^[ABC]-[1-5]$/.test(v)) {
+    const [r,p] = v.split('-'); let chosen = null;
+    for (let s=1; s<=3; s++) { const id = `${r}-${p}-${s}`; if (!ASSIGNMENTS[id]) { chosen = id; break; } }
+    if (!chosen) chosen = `${r}-${p}-1`;
+    showTab('assign');
+    setTimeout(() => { $('slot-select').value = chosen; updateSlotPreview(); $('machine-input').focus(); }, 50);
+    toast(`Port ${v} → ${chosen}`, 'ok');
+  } else {
+    toast('Scanned code is not a rack QR: ' + v, 'err');
+  }
+}
+$('scan-slot').addEventListener('click', startScanner);
+$('scan-close').addEventListener('click', stopScanner);
+$('scan-stop').addEventListener('click', stopScanner);
+$('scan-sheet').addEventListener('click', e => { if (e.target.id === 'scan-sheet') stopScanner(); });
+
+// Connection / online indicator
+window.addEventListener('offline', () => { $('conn-banner').textContent = 'Offline — changes will not save until you reconnect'; $('conn-banner').classList.add('show'); });
+window.addEventListener('online',  () => { $('conn-banner').classList.remove('show'); loadAll(); });
+
+// boot
+init();
+</script>
+</body>
+</html>
